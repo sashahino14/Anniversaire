@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Surprise !</title>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Poppins:wght@300;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --primary: #ff6b6b;
+            --secondary: #feca57;
+            --bg: #1a1a2e;
+            --text: #fff;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Poppins', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background 2s ease;
+        }
+
+        /* L'écran d'accueil (Enveloppe) */
+        #start-screen {
+            text-align: center;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .envelope {
+            font-size: 100px;
+            animation: float 3s ease-in-out infinite;
+            filter: drop-shadow(0 0 10px rgba(255,255,255,0.3));
+        }
+
+        .click-hint {
+            margin-top: 20px;
+            font-size: 1.2rem;
+            opacity: 0.8;
+            animation: pulse 2s infinite;
+        }
+
+        /* La scène principale */
+        #main-scene {
+            display: none; /* Caché au début */
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .message-container {
+            font-family: 'Dancing Script', cursive;
+            font-size: 2.2rem;
+            max-width: 85%;
+            min-height: 120px; /* Réserve la place pour le texte */
+            text-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+            margin-bottom: 30px;
+            z-index: 5;
+        }
+
+        .photo-frame {
+            width: 300px;
+            height: 300px;
+            border: 8px solid #fff;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transform: rotate(-3deg) scale(0.8);
+            opacity: 0;
+            transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            background-size: cover;
+            background-position: center;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            /* Image par défaut (si pas d'image définie) */
+            background-color: #333; 
+        }
+
+        .final-msg {
+            font-size: 3.5rem;
+            font-weight: bold;
+            color: var(--secondary);
+            opacity: 0;
+            transform: scale(0.5);
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-shadow: 2px 2px 0px #ff6b6b;
+            z-index: 10;
+        }
+
+        /* Animations */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        /* Classe utilitaire pour afficher les éléments */
+        .visible {
+            opacity: 1 !important;
+            transform: rotate(0deg) scale(1) !important;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="start-screen">
+        <div class="envelope">💌</div>
+        <div class="click-hint">Une surprise t'attend... (Clique ici)</div>
+    </div>
+
+    <div id="main-scene">
+        <div class="photo-frame" id="photo"></div>
+        <div class="message-container" id="text-area"></div>
+        <div class="final-msg" id="final">JOYEUX ANNIVERSAIRE !</div>
+    </div>
+
+    <audio id="bg-music" loop>
+        <source src="https://actions.google.com/sounds/v1/celebrations/happy_birthday.ogg" type="audio/ogg">
+    </audio>
+
+    <script>
+        // --- 🔧 ZONE DE CONFIGURATION 🔧 ---
+        
+        const neighbourName = "Ma Voisine Préférée"; // Change son nom ici
+
+        // Liste des messages et photos.
+        // Pour les images : mets tes propres fichiers dans le dossier et remplace les liens https://... par "photo1.jpg"
+        const sequence = [
+            { 
+                text: "Coucou ! J'ai préparé une petite chose spéciale pour aujourd'hui...", 
+                img: "https://images.unsplash.com/photo-1513151241131-698f2aba4896?auto=format&fit=crop&w=600&q=80" 
+            },
+            { 
+                text: "Parce qu'une voisine comme toi, c'est rare et précieux.", 
+                img: "https://images.unsplash.com/photo-1530103862676-de3c9da59af7?auto=format&fit=crop&w=600&q=80" 
+            },
+            { 
+                text: "Merci pour ta bonne humeur et tous ces moments sympas.", 
+                img: "https://images.unsplash.com/photo-1490349368154-73de9c9bc37c?auto=format&fit=crop&w=600&q=80" 
+            },
+            { 
+                text: "Je te souhaite tout le bonheur du monde pour cette nouvelle année !", 
+                img: "https://images.unsplash.com/photo-1504196606672-aef5c9cefc92?auto=format&fit=crop&w=600&q=80" 
+            },
+            { 
+                text: "Attention... prépare-toi...", 
+                img: "" // Pas d'image pour créer du suspense avant la fin
+            }
+        ];
+        // -------------------------------------
+
+        // Récupération des éléments HTML
+        const startScreen = document.getElementById('start-screen');
+        const mainScene = document.getElementById('main-scene');
+        const textArea = document.getElementById('text-area');
+        const photoFrame = document.getElementById('photo');
+        const finalMsg = document.getElementById('final');
+        const audio = document.getElementById('bg-music');
+
+        // Au clic sur l'enveloppe
+        startScreen.addEventListener('click', () => {
+            startScreen.style.display = 'none'; // Cache l'enveloppe
+            mainScene.style.display = 'flex';   // Affiche la scène
+            document.body.style.background = '#2d3436'; // Assombrit le fond
+            
+            // Lance la musique
+            audio.volume = 0.6; // Volume à 60%
+            audio.play().catch(e => console.log("Audio bloqué par le navigateur : " + e));
+            
+            // Lance la séquence
+            runSequence(0);
+        });
+
+        // Fonction effet machine à écrire
+        function typeWriter(text, i, callback) {
+            if (i < text.length) {
+                textArea.innerHTML = text.substring(0, i + 1) + '<span aria-hidden="true">|</span>';
+                setTimeout(() => typeWriter(text, i + 1, callback), 50); // Vitesse de frappe
+            } else {
+                textArea.innerHTML = text; // Retire le curseur
+                setTimeout(callback, 2500); // Temps de lecture avant la suite
+            }
+        }
+
+        // Fonction qui gère l'enchaînement des étapes
+        function runSequence(index) {
+            // Si on a fini la liste, on lance le final
+            if (index >= sequence.length) {
+                showFinal();
+                return;
+            }
+
+            const step = sequence[index];
+            
+            // 1. Gérer l'image
+            if(step.img) {
+                photoFrame.style.backgroundImage = `url('${step.img}')`;
+                photoFrame.classList.add('visible');
+            } else {
+                photoFrame.classList.remove('visible'); // Cache le cadre s'il n'y a pas d'image
+            }
+
+            // 2. Gérer le texte
+            textArea.innerHTML = ""; // Vide le texte précédent
+            // Petite pause avant de commencer à écrire
+            setTimeout(() => {
+                typeWriter(step.text, 0, () => {
+                    // Une fois le texte fini et lu, on passe à l'étape suivante
+                    photoFrame.classList.remove('visible'); // Transition de sortie
+                    setTimeout(() => {
+                        runSequence(index + 1);
+                    }, 800);
+                });
+            }, 500);
+        }
+
+        // Le grand final
+        function showFinal() {
+            photoFrame.style.display = 'none';
+            textArea.style.display = 'none';
+            
+            finalMsg.innerHTML = `JOYEUX ANNIVERSAIRE<br><span style="color:#fff; font-size:0.6em">${neighbourName} !</span> ❤️`;
+            finalMsg.classList.add('visible');
+            
+            // Explosion de confettis
+            launchConfetti();
+            
+            // Boucle de confettis toutes les 3 secondes
+            setInterval(launchConfetti, 3000);
+        }
+
+        // Configuration des confettis
+        function launchConfetti() {
+            var duration = 3000;
+            var end = Date.now() + duration;
+
+            (function frame() {
+                // Confettis venant de gauche
+                confetti({
+                    particleCount: 5,
+                    angle: 60,
+                    spread: 55,
+                    origin: { x: 0 },
+                    colors: ['#ff6b6b', '#feca57', '#ffffff', '#54a0ff']
+                });
+                // Confettis venant de droite
+                confetti({
+                    particleCount: 5,
+                    angle: 120,
+                    spread: 55,
+                    origin: { x: 1 },
+                    colors: ['#ff6b6b', '#feca57', '#ffffff', '#54a0ff']
+                });
+
+                if (Date.now() < end) {
+                    requestAnimationFrame(frame);
+                }
+            }());
+        }
+    </script>
+</body>
+</html>
